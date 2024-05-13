@@ -35,6 +35,9 @@ class BankisAPI:
                     inform.rstrip() for inform in information]
 
     def AccessCredential(self):
+        '''
+        Access Token을 발급 받는 함수
+        '''
         body_data = {
             "grant_type": "client_credentials",
             "appkey": self.api_key,
@@ -48,3 +51,14 @@ class BankisAPI:
 
         self.access_token = f"Bearer {credential_response.json()['access_token']}"
         return self.access_token
+
+    def AccountLink(self):
+        '''
+        API를 활용하여 계좌와 연결하는 함수
+        '''
+        self.broker = mojito.KoreaInvestment(
+            api_key=self.api_key,
+            api_secret=self.api_secret,
+            acc_no=self.acc_no
+        )
+        return self.broker
