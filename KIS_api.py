@@ -94,3 +94,22 @@ class BankisAPI:
 주관사는 __{company["lead_mgr"]}__입니다.
 청약 확정 금액은 __{company["fix_subscr_pri"].strip()}원__ 입니다.
             """)
+
+    def MakeExcel(self):
+        '''국내에 상장되어 있는 주식 및 ETF 가격 리스트를 CSV로 출력하는 Code'''
+
+        output = self.broker.fetch_symbols()
+        output.to_csv("symbols.csv", index=False)  # index를 제외하고 CSV로 저장
+
+        data = []
+        for idx, row in output.iterrows():
+            try:
+                if row["단축코드"].isnumeric() and row["단축코드"] > '0':
+                    value = self.broker.fetch_price(row["단축코드"])['output']
+                    data.append([row["단축코드"], row["한글명"], value["stck_prpr"]])
+                    print(f"{round(100 * idx / len(output), 2)}% 완료")
+            except:
+                continue
+
+        data_df = pd.DataFrame(data, columns=["단축코드", "한글명", "가격"])
+        data_df.to_csv("stock_price_list.csv", index=False)
