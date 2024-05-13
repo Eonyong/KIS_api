@@ -62,3 +62,35 @@ class BankisAPI:
             acc_no=self.acc_no
         )
         return self.broker
+
+    def WeeklyIPO(self):
+        """매주 상장하는 기업 데이터 도출"""
+        today = datetime.datetime.now()
+        weekly = today + datetime.timedelta(days=6)
+
+        ipo = requests.get(
+            url=f"{self.URL}/uapi/domestic-stock/v1/ksdinfo/pub-offer",
+            headers={
+                "content-type": "application/json",
+                "authorization": self.access_token,
+                "appkey": self.api_key,
+                "appsecret": self.api_secret,
+                "tr_id": "HHKDB669108C0",
+                "custtype": "P"
+            },
+            params={
+                "F_DT": today.strftime("%Y%m%d"),
+                "T_DT": weekly.strftime("%Y%m%d"),
+            })
+        ipo_companies = ipo.json()["output1"]
+
+        print(f"이번주에 상장하는 기업은 __총 {len(ipo_companies)}개__ 입니다.")
+        for company in ipo_companies:
+            print(f"""
+상장 기업은 __{company["isin_name"]}__이고
+청약 시작일은 {company["record_date"][:4]}년 {company["record_date"][4:6]}월 {company["record_date"][6:]}일 이고
+쳥약 진행일은 {company["subscr_dt"]}동안 진행이 됩니다.
+청약 환불일은 {company["refund_dt"]}
+주관사는 __{company["lead_mgr"]}__입니다.
+청약 확정 금액은 __{company["fix_subscr_pri"].strip()}원__ 입니다.
+            """)
