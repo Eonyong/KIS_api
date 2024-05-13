@@ -107,7 +107,6 @@ class BankisAPI:
                 if row["단축코드"].isnumeric() and row["단축코드"] > '0':
                     value = self.broker.fetch_price(row["단축코드"])['output']
                     data.append([row["단축코드"], row["한글명"], value["stck_prpr"]])
-                    print(f"{round(100 * idx / len(output), 2)}% 완료")
             except:
                 continue
 
