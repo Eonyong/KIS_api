@@ -19,6 +19,8 @@ class BankisAPI:
         self.broker = None
         self.URL = "https://openapi.koreainvestment.com:9443"
         self.access_token = None
+        self.LoadApiCredentials()
+        
 
     def LoadApiCredentials(self):
         '''
@@ -82,6 +84,7 @@ class BankisAPI:
                 "F_DT": today.strftime("%Y%m%d"),
                 "T_DT": weekly.strftime("%Y%m%d"),
             })
+
         ipo_companies = ipo.json()["output1"]
 
         print(f"이번주에 상장하는 기업은 __총 {len(ipo_companies)}개__ 입니다.")
