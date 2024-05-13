@@ -34,4 +34,17 @@ class BankisAPI:
                 self.api_key, self.api_secret, self.acc_no, self.access_token = [
                     inform.rstrip() for inform in information]
 
-    
+    def AccessCredential(self):
+        body_data = {
+            "grant_type": "client_credentials",
+            "appkey": self.api_key,
+            "appsecret": self.api_secret,
+        }
+        credential_response = requests.post(
+            url=f"{self.URL}/oauth2/tokenP",
+            headers={"content-type": "application/json"},
+            data=json.dumps(body_data)
+        )
+
+        self.access_token = f"Bearer {credential_response.json()['access_token']}"
+        return self.access_token
