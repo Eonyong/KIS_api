@@ -1,6 +1,7 @@
 import mojito
 import pandas as pd
 import datetime
+import time
 import requests
 import json
 
@@ -20,7 +21,7 @@ class BankisAPI:
         self.URL = "https://openapi.koreainvestment.com:9443"
         self.access_token = None
         self.LoadApiCredentials()
-        
+        self.AccessCredential()
 
     def LoadApiCredentials(self):
         '''
@@ -30,7 +31,7 @@ class BankisAPI:
             information = information.readlines()
 
             if len(information) == 3:
-                self.api_key, self.api_secret, self.acc_no = [
+                self.api_key, self.api_secret, self.acc_no, self.access_token = [
                     inform.rstrip() for inform in information]
             elif len(information) == 4:
                 self.api_key, self.api_secret, self.acc_no, self.access_token = [
@@ -45,13 +46,14 @@ class BankisAPI:
             "appkey": self.api_key,
             "appsecret": self.api_secret,
         }
-        credential_response = requests.post(
-            url=f"{self.URL}/oauth2/tokenP",
-            headers={"content-type": "application/json"},
-            data=json.dumps(body_data)
-        )
 
-        self.access_token = f"Bearer {credential_response.json()['access_token']}"
+        if self.access_token is None:
+            credential_response = requests.post(
+                url=f"{self.URL}/oauth2/tokenP",
+                headers={"content-type": "application/json"},
+                data=json.dumps(body_data)
+            )
+            self.access_token = f"Bearer {credential_response.json()['access_token']}"
         return self.access_token
 
     def AccountLink(self):
@@ -64,6 +66,23 @@ class BankisAPI:
             acc_no=self.acc_no
         )
         return self.broker
+
+    def Stock_SiSe(self, company_num):
+        stock = requests.get(
+            url=f'{self.URL}/uapi/domestic-stock/v1/quotations/inquire-price',
+            headers={
+                "content-type": "application/json",
+                "authorization": self.access_token,
+                "appkey": self.api_key,
+                "appsecret": self.api_secret,
+                "tr_id": 'FHKST01010100',
+            },
+            params={
+                'FID_COND_MRKT_DIV_CODE': 'J',
+                'FID_INPUT_ISCD': company_num
+            }
+        )
+        return [stock.json()['output']['short_over_yn'], stock.json()['output']['hts_avls'], stock.json()['output']['prdy_ctrt']]
 
     def WeeklyIPO(self):
         """매주 상장하는 기업 데이터 도출"""
@@ -100,7 +119,7 @@ class BankisAPI:
 
     def MakeExcel(self):
         '''국내에 상장되어 있는 주식 및 ETF 가격 리스트를 CSV로 출력하는 Code'''
-
+        self.AccountLink()
         output = self.broker.fetch_symbols()
         output.to_csv("symbols.csv", index=False)  # index를 제외하고 CSV로 저장
 
@@ -109,9 +128,18 @@ class BankisAPI:
             try:
                 if row["단축코드"].isnumeric() and row["단축코드"] > '0':
                     value = self.broker.fetch_price(row["단축코드"])['output']
-                    data.append([row["단축코드"], row["한글명"], value["stck_prpr"]])
+                    overshooting, total_price, variance_ratio = self.Stock_SiSe(
+                        row["단축코드"])
+                    data.append([row["단축코드"], row["한글명"],
+                                value["stck_prpr"], overshooting, total_price, variance_ratio])
+                    print(
+                        f'[{idx / len(output) * 100:.2f}% 완료] {row["한글명"]} 데이터 입력')
+                    time.sleep(.05)
             except:
                 continue
+        else:
+            print('데이터를 모두 가져왔습니다.')
 
-        data_df = pd.DataFrame(data, columns=["단축코드", "한글명", "가격"])
-        data_df.to_csv("stock_price_list.csv", index=False)
+        data_df = pd.DataFrame(
+            data, columns=["단축코드", "한글명", "가격", "단기과열여부", "시가총액", "전일 대비 상승률"])
+        data_df.to_csv("stock_price_list.csv", encoding='utf-8', index=False)
